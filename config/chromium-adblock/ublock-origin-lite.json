@@ -1,0 +1,23 @@
+{
+  "ExtensionInstallForcelist": [
+    "ddkjiahejlhfcafbddmgiahcphecmpfh;https://clients2.google.com/service/update2/crx"
+  ],
+  "ExtensionSettings": {
+    "ddkjiahejlhfcafbddmgiahcphecmpfh": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx",
+      "toolbar_pin": "force_pinned"
+    }
+  },
+  "3rdparty": {
+    "extensions": {
+      "ddkjiahejlhfcafbddmgiahcphecmpfh": {
+        "defaultFiltering": "complete",
+        "disableFirstRunPage": true,
+        "showBlockedCount": true,
+        "strictBlockMode": true,
+        "popupBlockMode": true
+      }
+    }
+  }
+}

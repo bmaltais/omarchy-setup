@@ -9,6 +9,22 @@ Live config stays on the machine (`~/.config/`, `/etc/`). This repo stores **gen
 | Topic | Guide | Apply |
 |-------|-------|--------|
 | DisplayLink USB hub / dock on Hyprland | [docs/displaylink.md](docs/displaylink.md) | `scripts/displaylink-detect.sh`, `displaylink-install.sh`, `displaylink-configure.sh` |
+| Chromium ad blocker (uBlock Origin Lite) | [docs/chromium-adblock.md](docs/chromium-adblock.md) | `scripts/chromium-adblock-install.sh` |
+
+## Quick start (Chromium ad blocker)
+
+```bash
+git clone https://github.com/bmaltais/omarchy-setup.git
+cd omarchy-setup
+
+./scripts/chromium-adblock-install.sh
+```
+
+Quit Chromium fully and open it again. Reload YouTube if a tab was already open. Details, Complete-mode notes, and undo: [docs/chromium-adblock.md](docs/chromium-adblock.md).
+
+```bash
+./scripts/chromium-adblock-status.sh
+```
 
 ## Quick start (DisplayLink)
 

@@ -82,6 +82,7 @@ Do not copy the user’s current `monitors.lua` or udev rules into git unless yo
 | Playbook | Doc | Scripts |
 |----------|-----|---------|
 | DisplayLink USB graphics on Hyprland | [`docs/displaylink.md`](docs/displaylink.md) | `scripts/displaylink-*.sh` |
+| Chromium ad blocker (uBlock Origin Lite) | [`docs/chromium-adblock.md`](docs/chromium-adblock.md) | `scripts/chromium-adblock-*.sh` |
 
 ## Conventions
 
