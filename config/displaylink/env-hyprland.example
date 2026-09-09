@@ -1,0 +1,8 @@
+# Applied inside a marked block in ~/.config/uwsm/env-hyprland
+# GPU must stay the primary renderer. Include evdi cards so DisplayLink outputs exist.
+# Use udev-stable names (not /dev/dri/cardN, not PCI by-path — those contain colons).
+export AQ_DRM_DEVICES="/dev/dri/nvidia-gpu:/dev/dri/evdi0:/dev/dri/evdi1"
+
+# NVIDIA GBM modifiers cannot be imported into evdi (drmPrimeFDToHandle failed).
+export AQ_NO_MODIFIERS=1
+export AQ_MGPU_NO_EXPLICIT=1
