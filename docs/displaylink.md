@@ -41,13 +41,15 @@ You want:
 4. Extra DRM nodes `platform-evdi.*` under `/dev/dri/by-path/`
 5. `hyprctl monitors` lists extra outputs (`DVI-I-1`, `DVI-I-2`, or extra `DP-*` / `HDMI-*`)
 
-USB speed matters. Video at `480M` (USB 2 High Speed) will be unusable. Plug the hub into a USB 3 / USB-C SuperSpeed port with a SuperSpeed cable and check:
+USB speed matters for *smoothness*, not for whether a picture can exist at all. DisplayLink compresses frames. One 1080p@60 screen can run on USB 2 (`480M`); two screens will feel laggy. Plug the hub into a USB 3 / USB-C SuperSpeed port with a SuperSpeed cable when you can:
 
 ```bash
 lsusb -t | grep -A2 -i displaylink
 ```
 
-You want `5000M` or `10000M`, not `480M`. Keyboard and Ethernet on the hub can work on USB 2 while video still fails.
+You want `5000M` or `10000M`. Keyboard and Ethernet on the hub can work on USB 2 while the SuperSpeed video function never enumerates.
+
+If `hyprctl monitors` lists DisplayLink outputs at `0x0` with `enabled=disabled` in sysfs, that is a **modeset / buffer-import failure**, not a bandwidth failure. USB 2 is not why the screen stays black.
 
 To paste detect output into a public issue, run `./scripts/displaylink-detect.sh --sanitize`.
 
@@ -183,10 +185,21 @@ Packages (optional):
 omarchy pkg drop displaylink evdi-dkms
 ```
 
+## Why the same hub can work on Windows and fail on Omarchy
+
+This is expected. It is not proof that the cable is fine on Linux, and it is not proof that Linux “should just work.”
+
+- Plugable and Synaptics ship a **first-party Windows driver**. Linux uses the community `evdi` kernel module plus a userspace binary. Many docks (including the Plugable UD-3900PDZ) list Windows / macOS / ChromeOS and **not Linux**.
+- Windows does not go through Hyprland, Aquamarine, or NVIDIA GBM buffer import. On NVIDIA + Wayland the usual Linux failure is `drmPrimeFDToHandle failed` / outputs stuck at `0x0`, even when `displaylink.service` is healthy.
+- DisplayLink **can** draw a picture over USB 2. Windows will do that. USB 2 only makes the desktop laggy; it does not by itself keep the screen black.
+- Hybrid USB-C docks often have **one native DP-alt-mode** HDMI and **two DisplayLink** HDMIs. Alt-mode needs a USB-C port that carries DisplayPort. A USB-A desktop port never provides that, on any OS. Those extra screens are DisplayLink-only.
+
+`AQ_*` workarounds in `~/.config/uwsm/env-hyprland` apply only after a new Hyprland session (log out or reboot), not after `hyprctl reload`.
+
 ## Practical limits
 
 - DisplayLink compresses frames over USB. Two 4K@60 screens will tax the CPU and often feel laggy.
-- Start at 1080p or 1440p @ 60 Hz.
+- Start at 1080p or 1440p @ 60 Hz. USB 2 (`480M`) can still show one 1080p screen; prefer SuperSpeed.
 - Hybrid GPU laptops: keep `AQ_DRM_DEVICES` pointed at the GPU Hyprland should render on, and still include the evdi cards so those outputs exist.
 - A catch-all `hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })` can pick a useless last EDID mode (for example `720x400`) on evdi. Prefer explicit names and modes.
 
