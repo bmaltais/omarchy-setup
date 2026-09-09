@@ -13,7 +13,7 @@ Live config stays on the machine (`~/.config/`, `/etc/`). This repo stores **gen
 ## Quick start (DisplayLink)
 
 ```bash
-git clone https://github.com/<you>/omarchy-setup.git
+git clone https://github.com/bmaltais/omarchy-setup.git
 cd omarchy-setup
 
 ./scripts/displaylink-detect.sh
@@ -37,15 +37,13 @@ After a kernel or Omarchy update:
 
 Agents working in this repo should read [AGENTS.md](AGENTS.md) first. That file is the rulebook for keeping playbooks public-safe.
 
-## Publish to GitHub
+## Publish your own fork
 
 ```bash
-gh auth login
-cd omarchy-setup
-gh repo create omarchy-setup --public --source=. --remote=origin --push
+gh repo fork bmaltais/omarchy-setup --clone
 ```
 
-Then replace `<you>` in clone URLs with your GitHub user or org.
+Or copy the tree into a new repo and point the clone URL at your account.
 
 ## License
 
