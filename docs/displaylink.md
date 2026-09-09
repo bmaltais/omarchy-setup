@@ -126,7 +126,7 @@ ERR from aquamarine ]: GBM: Allocating with modifiers failed, falling back to im
 
 Outputs then show up in `hyprctl monitors` at `0x0` and never modeset.
 
-Do **not** put PCI paths such as `/dev/dri/by-path/pci-0000:08:00.0-card` in `AQ_DRM_DEVICES`. Aquamarine splits that variable on `:`.
+Do **not** put PCI `by-path` names in `AQ_DRM_DEVICES` (they contain colons, and Aquamarine splits the variable on `:`). Use the udev symlinks instead.
 
 ## 4. Verify
 
