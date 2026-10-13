@@ -10,6 +10,7 @@ Live config stays on the machine (`~/.config/`, `/etc/`). This repo stores **gen
 |-------|-------|--------|
 | DisplayLink USB hub / dock on Hyprland | [docs/displaylink.md](docs/displaylink.md) | `scripts/displaylink-detect.sh`, `displaylink-install.sh`, `displaylink-configure.sh` |
 | Chromium ad blocker (uBlock Origin Lite) | [docs/chromium-adblock.md](docs/chromium-adblock.md) | `scripts/chromium-adblock-install.sh` |
+| NVIDIA Resizable BAR (browser crashes on video) | [docs/nvidia-resizable-bar.md](docs/nvidia-resizable-bar.md) | `scripts/nvidia-resizable-bar-install.sh` |
 
 ## Quick start (Chromium ad blocker)
 
@@ -44,6 +45,17 @@ After a kernel or Omarchy update:
 ```bash
 ./scripts/displaylink-rebuild.sh
 ```
+
+## Quick start (NVIDIA Resizable BAR)
+
+Enable **Above 4G Decoding** and **Re-Size BAR Support** in the BIOS first, then:
+
+```bash
+./scripts/nvidia-resizable-bar-status.sh
+./scripts/nvidia-resizable-bar-install.sh
+```
+
+Reboot. Re-run the install script after any Omarchy reinstall. Details: [docs/nvidia-resizable-bar.md](docs/nvidia-resizable-bar.md).
 
 ## Adding another customization
 
