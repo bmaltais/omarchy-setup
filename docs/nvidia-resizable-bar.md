@@ -26,7 +26,7 @@ Confirm the cause:
 
 - Omarchy (Arch + Hyprland), NVIDIA proprietary driver, UEFI boot via Limine and a UKI
 - A GPU that supports Resizable BAR (RTX 30-series or newer; `lspci -vv` shows a `Resizable BAR` capability)
-- A CPU/board whose firmware has **Above 4G Decoding** and **Re-Size BAR Support** (tested on an AMD A520 board with a firmware update)
+- A CPU/board whose firmware has **Above 4G Decoding** and **Re-Size BAR Support** (tested on an AMD A520 board; BAR 1 went from 256M to 32G on an RTX 3090)
 
 ## Live paths this playbook changes
 
@@ -52,7 +52,7 @@ Reboot into the BIOS (Del or F2). In Advanced Mode (F7):
 - **Re-Size BAR Support** = Enabled (hidden until Above 4G Decoding is on)
 - Boot → CSM: **Launch CSM** = Disabled (the system must boot UEFI)
 
-If the options are missing, update the BIOS first.
+If the options are missing, check for a newer BIOS.
 
 Boot, then run the status script. BAR 1 should now be several GiB (32G on a 24GB RTX 3090), not 256M. If it is still 256M, the firmware option did not take. Setting the driver option without this step does nothing.
 
@@ -94,6 +94,6 @@ If you added the option to `/etc/modprobe.d/nvidia.conf` by hand, remove that li
 
 ## After updates / reinstall
 
-- Kernel or driver updates: nothing to redo; `limine-update` runs as part of Omarchy's hooks and picks up the drop-in.
+- Kernel or driver updates: nothing to redo. The drop-in stays in `/etc/modprobe.d` and gets baked into each rebuilt UKI. `limine-update` rebuilds one per installed kernel, and I confirmed the option lands in the image of the running kernel.
 - **Reinstalling Omarchy:** the modprobe drop-in lives on the root filesystem and is wiped. Rerun the install script. As far as I know the Omarchy installer only sets `options nvidia_drm modeset=1`.
 - The BIOS settings survive a reinstall. A BIOS reset to defaults or a CMOS clear turns them off; redo step 2.
