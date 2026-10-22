@@ -26,9 +26,14 @@ need_sudo() {
   fi
 }
 
+# Root cannot read some user-owned trees (FUSE mounts such as a home-directory filesystem),
+# so stage the file in /tmp before the privileged copy.
 install_file() {
-  local src="$1" dest="$2" mode="${3:-0644}"
-  sudo install -D -m "$mode" "$src" "$dest"
+  local src="$1" dest="$2" mode="${3:-0644}" tmp
+  tmp="$(mktemp)"
+  cp "$src" "$tmp"
+  sudo install -D -m "$mode" "$tmp" "$dest"
+  rm -f "$tmp"
 }
 
 # Vendor of the PCI GPU that currently owns a connected connector, else first VGA.
