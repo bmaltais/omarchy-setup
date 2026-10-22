@@ -37,7 +37,9 @@ cd omarchy-setup
 
 ./scripts/displaylink-detect.sh
 ./scripts/displaylink-install.sh
+./scripts/displaylink-dryrun.sh --apply-monitors   # optional: preview what configure would change
 ./scripts/displaylink-configure.sh --apply-monitors
+./scripts/displaylink-aquamarine-patch.sh   # NVIDIA only: stock Aquamarine cannot drive evdi outputs
 ```
 
 Plug the hub into a **USB 3 / SuperSpeed** port, then reboot with it attached. Full notes, limits, and undo steps are in the DisplayLink guide.

@@ -1,8 +1,40 @@
-# Applied inside a marked block in ~/.config/uwsm/env-hyprland
-# GPU must stay the primary renderer. Include evdi cards so DisplayLink outputs exist.
-# Use udev-stable names (not /dev/dri/cardN, not PCI by-path — those contain colons).
-export AQ_DRM_DEVICES="/dev/dri/nvidia-gpu:/dev/dri/evdi0:/dev/dri/evdi1"
+# Body of the marked block that displaylink-configure.sh puts in ~/.config/uwsm/env-hyprland.
+# It runs in sh at session start, before Hyprland. The GPU is resolved at login instead of
+# hardcoded, so a missing udev symlink can never leave AQ_DRM_DEVICES pointing at nothing,
+# and an evdi card can never end up as the primary device.
+gpu=
+for cand in /dev/dri/nvidia-gpu /dev/dri/amd-gpu /dev/dri/intel-gpu /dev/dri/gpu; do
+  if [ -e "$cand" ]; then
+    gpu=$cand
+    break
+  fi
+done
 
-# NVIDIA GBM modifiers cannot be imported into evdi (drmPrimeFDToHandle failed).
-export AQ_NO_MODIFIERS=1
-export AQ_MGPU_NO_EXPLICIT=1
+# Fallback: first PCI DRM card whose driver is not evdi.
+if [ -z "$gpu" ]; then
+  for card in /dev/dri/card[0-9]*; do
+    [ -e "$card" ] || continue
+    name=$(basename "$card")
+    driver_link="/sys/class/drm/${name}/device/driver"
+    [ -e "$driver_link" ] || continue
+    driver=$(basename "$(readlink -f "$driver_link")")
+    [ "$driver" = evdi ] && continue
+    gpu=$card
+    break
+  done
+fi
+
+# With no usable GPU, leave AQ_DRM_DEVICES unset so Aquamarine uses its defaults.
+if [ -n "$gpu" ]; then
+  aq=$gpu
+  [ -e /dev/dri/evdi0 ] && aq="${aq}:/dev/dri/evdi0"
+  [ -e /dev/dri/evdi1 ] && aq="${aq}:/dev/dri/evdi1"
+  export AQ_DRM_DEVICES="$aq"
+  if [ -e /dev/dri/nvidia-gpu ] || [ -d /sys/module/nvidia_drm ]; then
+    export AQ_FORCE_LINEAR_BLIT=0
+    export AQ_MGPU_NO_EXPLICIT=1
+    # AQ_NO_MODIFIERS=1 is NOT set by default: on some NVIDIA setups it greys out the native
+    # outputs too. Without it, evdi may fail to import buffers (outputs stay 0x0).
+    # displaylink-configure.sh --no-modifiers appends it at the end of this block.
+  fi
+fi

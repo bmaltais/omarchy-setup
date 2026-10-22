@@ -4,6 +4,8 @@ Use a DisplayLink USB hub or dock as extra monitors on Omarchy. A DisplayLink de
 
 Prefer native GPU ports when you can. Use this playbook when the extra screens only exist on a DisplayLink hub.
 
+**Status:** works on NVIDIA with a patched Aquamarine (see [NVIDIA + evdi](#nvidia--evdi)); verified with a Plugable UD-3900PDZ on an RTX 3090, Hyprland 0.56, Aquamarine 0.15.1, evdi 1.15.1, `displaylink` 6.4. AMD and Intel are expected to work with stock Aquamarine but are untested here.
+
 ## Assumptions
 
 - Omarchy (Arch + Hyprland / Wayland)
@@ -15,8 +17,8 @@ Prefer native GPU ports when you can. Use this playbook when the extra screens o
 
 | Path | Role |
 |------|------|
-| `~/.config/hypr/monitors.lua` | Output names, mode, position, scale |
-| `~/.config/uwsm/env-hyprland` | `AQ_DRM_DEVICES` and NVIDIA/evdi workarounds (must exist before Hyprland starts) |
+| `~/.config/hypr/monitors.lua` | Only with `--apply-monitors`: appends lines for evdi outputs it does not mention yet (backup first, rolled back on config errors) |
+| `~/.config/uwsm/env-hyprland` | A marked block that resolves `AQ_DRM_DEVICES` at login, plus NVIDIA multi-GPU workarounds (must exist before Hyprland starts). The previous file is backed up before the block is replaced |
 | `/etc/modprobe.d/evdi.conf` | `initial_device_count` so evdi cards exist at login |
 | `/etc/modules-load.d/evdi.conf` | Load `evdi` at boot |
 | `/etc/udev/rules.d/99-drm-stable-names.rules` | Stable `/dev/dri/nvidia-gpu`, `/dev/dri/evdi0`, … (generated; not committed) |
@@ -75,7 +77,12 @@ Xorg snippets from the Arch wiki are **not** required on Wayland. Hyprland talks
 ./scripts/displaylink-configure.sh
 ```
 
-Add `--apply-monitors` to write a left-to-right `monitors.lua` from currently connected outputs (backs up the existing file first). Without that flag, the script still installs udev, modprobe, systemd, and UWSM env, and prints a suggested `monitors.lua`.
+Options:
+
+- `--apply-monitors` appends `hl.monitor` lines for evdi outputs that `monitors.lua` does not mention yet, placed to the right of the existing layout at `1920x1080@60`, scale 1. Existing lines are never rewritten, so your scales, rotations, comments and `disabled = true` lines stay. It backs the file up first, runs `hyprctl reload`, and **restores the backup and exits 1** if `hyprctl configerrors` reports anything.
+- `--no-modifiers` also exports `AQ_NO_MODIFIERS=1`. Off by default and not needed with the patched Aquamarine; kept only for experiments.
+
+Without `--apply-monitors`, the script still installs udev, modprobe, systemd and the UWSM env block, and prints the lines it would add.
 
 ### Hyprland layout
 
@@ -104,29 +111,48 @@ hyprctl reload
 hyprctl configerrors
 ```
 
-`AQ_*` changes in `~/.config/uwsm/env-hyprland` need a **new Hyprland session** (log out / reboot), not only `hyprctl reload`.
+`AQ_*` changes in `~/.config/uwsm/env-hyprland` and the evdi udev symlinks need a **new Hyprland session** (log out / reboot), not only `hyprctl reload`.
 
 Lid-closed + externals-only on a laptop is already an Omarchy feature (`Super + Ctrl + Delete`, or close the lid with externals connected). This playbook does not replace that.
 
-### NVIDIA + evdi
+### Multi-GPU: `AQ_DRM_DEVICES`
 
 Hyprland must render on the real GPU and scan out on evdi. If `AQ_DRM_DEVICES` is unset, an evdi card can become primary after reboot (`/dev/dri/card0` is not stable).
 
 The configure script:
 
-- Writes udev rules so the discrete GPU is `/dev/dri/nvidia-gpu` (or `amd-gpu` / `intel-gpu`) and evdi cards are `/dev/dri/evdi0`, `/dev/dri/evdi1`
-- Exports `AQ_DRM_DEVICES` with the GPU first, then evdi
-- On NVIDIA, also sets `AQ_NO_MODIFIERS=1` and `AQ_MGPU_NO_EXPLICIT=1`
+- Writes udev rules so the discrete GPU is `/dev/dri/nvidia-gpu` (or `amd-gpu` / `intel-gpu`) and evdi cards are `/dev/dri/evdi0`, `/dev/dri/evdi1`. If no GPU can be detected it skips the GPU rule instead of guessing.
+- Installs the block from [`config/displaylink/env-hyprland.example`](../config/displaylink/env-hyprland.example). It picks the GPU **at login**: the udev symlink if present, else the first PCI card whose driver is not `evdi`. It lists `evdi0`/`evdi1` only if they exist, and leaves `AQ_DRM_DEVICES` unset if no GPU is found. A fixed list pointing at devices that are not there (hub unplugged, module not loaded) must never be what Hyprland starts with.
+- On NVIDIA also sets `AQ_FORCE_LINEAR_BLIT=0` and `AQ_MGPU_NO_EXPLICIT=1`.
 
-Without the NVIDIA workarounds, Hyprland logs look like:
+### NVIDIA + evdi
+
+On NVIDIA, stock Aquamarine cannot drive evdi outputs. Symptoms: the output is listed by `hyprctl monitors` with the mode you asked for, `/sys/class/drm/card*-DVI-I-*/enabled` stays `disabled`, the screen shows no signal, and the log has:
 
 ```text
 ERR from aquamarine ]: drm: drmPrimeFDToHandle failed
 ERR from aquamarine ]: drm: Buffer failed to import to KMS
-ERR from aquamarine ]: GBM: Allocating with modifiers failed, falling back to implicit
 ```
 
-Outputs then show up in `hyprctl monitors` at `0x0` and never modeset.
+**Cause.** evdi has no render device, and NVIDIA's dmabuf exporter refuses `dma_buf_attach` from foreign drivers, so the primary GPU's buffer cannot be imported into evdi. `AQ_NO_MODIFIERS=1` does not fix this and can grey out the native outputs, so it is **not** set by default.
+
+**Fix.** [hyprwm/aquamarine#279](https://github.com/hyprwm/aquamarine/pull/279) adds a last-resort CPU-copy path (the same approach KWin and Mutter use): when the direct import fails on evdi, the frame is read back and written into a dumb buffer. It is not merged upstream yet. This repo carries it, adapted to Aquamarine 0.15.1, as [`config/displaylink/aquamarine-evdi-nvidia.patch`](../config/displaylink/aquamarine-evdi-nvidia.patch) (three changes on top of the PR: write the blit fence into the commit snapshot, the `OPTIONS.length == 0` swapchain guard, and no queued/timed commits for evdi).
+
+```bash
+./scripts/displaylink-aquamarine-patch.sh
+```
+
+It builds Arch's `aquamarine` package with the patch (version `<ver>-1.1`, so it sorts above the stock `<ver>-1`) and installs it with `pacman -U`. `--build-only` builds without installing. Log out and back in afterwards. A working session logs `direct KMS import of primary buffer failed … switching to dumb-buffer CPU copy`.
+
+Things to know:
+
+- **It does not survive an Aquamarine update.** A newer package from Arch/Omarchy replaces it and the heads go back to no signal. Rerun the script after any update that touches `aquamarine`. The script refuses to build if the patch no longer applies; then check whether #279 was merged (nothing to do) or rebase the patch.
+- **Do not `IgnorePkg` it.** Hyprland and Aquamarine are versioned together; holding Aquamarine back breaks Hyprland updates.
+- **It costs CPU.** Every frame for the evdi screen is read back and copied. A tester measured about 16–20% of one core while content changes, on a small panel; a 1080p screen costs more. Measure it on your hardware.
+- `Cannot commit when a page-flip is awaiting` lines in the Hyprland log are common and have not caused visible problems.
+- **Undo:** `sudo pacman -S aquamarine` reinstalls the stock package.
+
+AMD and Intel primaries do not need the patch.
 
 Do **not** put PCI `by-path` names in `AQ_DRM_DEVICES` (they contain colons, and Aquamarine splits the variable on `:`). Use the udev symlinks instead.
 
@@ -153,7 +179,31 @@ If `hyprctl monitors` still only shows the internal / native panel:
 - Reboot **with the hub connected**
 - `sudo dmesg | grep -iE 'evdi|displaylink|17e9'`
 
-Some sessions only pick up evdi outputs when the compositor starts with the dock already attached. Hyprland/aquamarine evdi support is unofficial.
+Without the udev symlinks (the configure step) `AQ_DRM_DEVICES` lists only the GPU and Aquamarine ignores evdi entirely, so run configure and start a new session. Some sessions only pick up evdi outputs when the compositor starts with the dock already attached. Hyprland/aquamarine evdi support is unofficial.
+
+## Test it safely
+
+Before running configure for real, on any machine:
+
+1. **Dry run.** Runs the configure script against throwaway copies of your `monitors.lua` and `env-hyprland`, with `sudo` and `hyprctl reload` stubbed, and prints the diff. Nothing is installed or reloaded.
+
+   ```bash
+   ./scripts/displaylink-dryrun.sh --apply-monitors
+   ./scripts/displaylink-dryrun.sh --fake-evdi --apply-monitors   # pretend DVI-I-1/2 exist
+   DRYRUN_CONFIGERRORS="oops" ./scripts/displaylink-dryrun.sh --fake-evdi --apply-monitors   # exercise the rollback
+   ```
+
+2. **Check that evdi builds for your kernel**, without installing it. Download the release the AUR package points at, then:
+
+   ```bash
+   make -C /usr/lib/modules/$(uname -r)/build M=$PWD/module modules
+   ```
+
+3. **Snapshot first.** `omarchy snapshot create` (snapper) before the real run.
+4. **Test without the hub.** `initial_device_count=2` creates virtual evdi cards even with nothing plugged in, so after the real install you can check the udev symlinks, the `AQ_DRM_DEVICES` value (`echo $AQ_DRM_DEVICES` in a new session) and that Hyprland still starts, from a second TTY with the snapshot ready.
+5. Only real hardware proves the buffer import. A VM with a virtual GPU can test everything except that.
+
+`Hyprland --verify-config` is not a reliable check here (it can crash even on a valid config); use `hyprctl reload` and `hyprctl configerrors` instead.
 
 ## After kernel or Omarchy updates
 
@@ -163,7 +213,7 @@ evdi is DKMS. A new kernel often needs a rebuild:
 ./scripts/displaylink-rebuild.sh
 ```
 
-That runs `dkms autoinstall` and restarts `displaylink.service`. If the module fails to build, wait for a newer `evdi-dkms` or switch to `evdi-dkms-git` if it tracks a newer tree.
+That runs `dkms autoinstall` and restarts `displaylink.service`. On NVIDIA also rerun `./scripts/displaylink-aquamarine-patch.sh` whenever `aquamarine` was updated. If the module fails to build, wait for a newer `evdi-dkms` or switch to `evdi-dkms-git` if it tracks a newer tree.
 
 ## Undo
 
@@ -177,12 +227,13 @@ sudo udevadm control --reload
 sudo udevadm trigger --subsystem-match=drm
 ```
 
-Remove the `# BEGIN omarchy-setup displaylink` block from `~/.config/uwsm/env-hyprland` if present. Restore `~/.config/hypr/monitors.lua` from the backup the configure script created, or run `omarchy refresh hyprland` only if you intend to reset **all** Hyprland user Lua (ask first).
+Remove the `# BEGIN omarchy-setup displaylink` … `# END` block from `~/.config/uwsm/env-hyprland` if present (or restore the `env-hyprland.bak.*` the script made). Remove the lines under `-- Added by omarchy-setup displaylink-configure.sh` from `~/.config/hypr/monitors.lua`, or restore the `monitors.lua.bak.*` backup, or run `omarchy refresh hyprland` only if you intend to reset **all** Hyprland user Lua (ask first).
 
 Packages (optional):
 
 ```bash
 omarchy pkg drop displaylink evdi-dkms
+sudo pacman -S aquamarine   # only if the patched build was installed
 ```
 
 ## Why the same hub can work on Windows and fail on Omarchy
