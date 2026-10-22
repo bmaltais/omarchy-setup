@@ -1,5 +1,0 @@
-# Generated at apply-time by scripts/displaylink-configure.sh.
-# Do not commit a machine's real PCI address. KERNELS=="0000:XX:XX.X" is a placeholder.
-KERNEL=="card*", KERNELS=="0000:XX:XX.X", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/nvidia-gpu"
-KERNEL=="card*", KERNELS=="evdi.0", SUBSYSTEM=="drm", SUBSYSTEMS=="platform", SYMLINK+="dri/evdi0"
-KERNEL=="card*", KERNELS=="evdi.1", SUBSYSTEM=="drm", SUBSYSTEMS=="platform", SYMLINK+="dri/evdi1"
