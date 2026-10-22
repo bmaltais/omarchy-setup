@@ -146,7 +146,14 @@ It builds Arch's `aquamarine` package with the patch (version `<ver>-1.1`, so it
 
 Things to know:
 
-- **It does not survive an Aquamarine update.** A newer package from Arch/Omarchy replaces it and the heads go back to no signal. Rerun the script after any update that touches `aquamarine`. The script refuses to build if the patch no longer applies; then check whether #279 was merged (nothing to do) or rebase the patch.
+- **It does not survive an Aquamarine update by itself.** A newer package from Arch/Omarchy replaces it and the heads go back to no signal. Install the update hook once:
+
+  ```bash
+  ./scripts/displaylink-aquamarine-patch.sh --install-hook
+  ```
+
+  After every `omarchy update`, the hook runs `--ensure`. That does nothing unless `displaylink` is installed, NVIDIA is in use and the installed `libaquamarine` lacks the fix (`--status` prints `patched` or `stock`). If it lacks the fix, it rebuilds against the new Arch version, checks that the built package really carries the fix, installs it, and sends a notification asking you to log out. If the patch no longer applies, or the build fails, you get a notification instead, and the system package is left alone (screens stay at no signal until the patch is updated). Use `--remove-hook` to uninstall the hook. The hook file is generated per machine with this repo's path; it is not committed.
+- **When upstream merges #279**, the stock library will carry the fix and `--ensure` becomes a no-op on its own. If the merged code logs a different message than the marker the script greps for, `--ensure` will try to rebuild, find the patch no longer applies, and say upstream's state in the notification. At that point run `--remove-hook` and stop using this patch.
 - **Do not `IgnorePkg` it.** Hyprland and Aquamarine are versioned together; holding Aquamarine back breaks Hyprland updates.
 - **It costs CPU.** Every frame for the evdi screen is read back and copied. A tester measured about 16–20% of one core while content changes, on a small panel; a 1080p screen costs more. Measure it on your hardware.
 - `Cannot commit when a page-flip is awaiting` lines in the Hyprland log are common and have not caused visible problems.
@@ -171,6 +178,10 @@ Success looks like:
 - `lsmod` contains `evdi`
 - Extra outputs are **not** `0x0` — they show a real mode such as `1920x1080@60`
 - `/sys/class/drm/card*-DVI-I-*/enabled` is `enabled` for connected DisplayLink connectors
+
+If an output looks healthy (real mode in `hyprctl monitors`, `enabled` in `/sys/class/drm/card*-*/enabled`, a `Modesetting … with 1920x1080@60` line in the Hyprland log) but the screen says "no signal", **check the monitor's input source and the cabling first**. A monitor that is also wired to another machine or GPU, or daisy-chained from another monitor, stays on its other input. This looks identical to a driver failure. Pressing the monitor's input button, or unplugging one cable at a time while watching `/sys/class/drm/card*-*/status`, tells you which dock port feeds which output.
+
+Docks like the Plugable UD-3900PDZ have three HDMI ports: the first is USB-C DisplayPort alt mode (needs a USB-C port that carries DisplayPort; it never works behind a USB-A link), the other two are DisplayLink and appear as `DVI-I-1` / `DVI-I-2`. Two outputs with byte-identical EDIDs usually mean two identical monitors, not a fault.
 
 If `hyprctl monitors` still only shows the internal / native panel:
 

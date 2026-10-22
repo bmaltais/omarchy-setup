@@ -68,6 +68,10 @@ emit() {
   lspci -d ::03xx -nnk 2>/dev/null || true
 
   echo
+  echo "=== aquamarine (evdi on NVIDIA needs the patched build) ==="
+  pacman -Q aquamarine 2>/dev/null || true
+  "$SCRIPT_DIR/displaylink-aquamarine-patch.sh" --status 2>/dev/null || true
+  echo
   echo "=== hyprctl monitors ==="
   if command -v hyprctl >/dev/null && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" || -d "${XDG_RUNTIME_DIR:-}/hypr" ]]; then
     hyprctl monitors 2>/dev/null || echo "(hyprctl failed)"
