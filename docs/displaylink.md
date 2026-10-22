@@ -227,7 +227,14 @@ scripts/displaylink-benchmark.sh --seconds 20 --label "moving window"   # keep c
 
 It prints Hyprland and DisplayLinkManager CPU, Hyprland log lines and KiB per second, monitor count and the USB link speed. The output contains no hostnames or monitor names, so it can be pasted into an issue.
 
-Baseline, idle desktop (3 monitors, 2 through the dock, USB 2 at 480M, RTX 3090, 12 cores): Hyprland about 2% of one core, DisplayLinkManager about 0.2%, no log output. Rendering is damage-driven, so the cost appears only when screen content changes. Worst case, a 900x600 terminal printing continuously and jumping across the screens about seven times a second: Hyprland about 99% of one core, DisplayLinkManager about 136%, and about 650 log lines (60 KiB) per second. That is the number to beat when tuning the patch.
+Baseline, idle desktop (3 monitors, 2 through the dock, USB 2 at 480M, RTX 3090, 12 cores): Hyprland about 2% of one core, DisplayLinkManager about 0.2%, no log output. Rendering is damage-driven, so the cost appears only when screen content changes. Worst case, a 900x600 terminal printing continuously and jumping across the screens about seven times a second:
+
+| | Hyprland | DisplayLinkManager | Hyprland log |
+|---|---|---|---|
+| First patch | about 99% of one core | about 136% | about 650 lines/s (60 KiB/s) |
+| Tuned patch | about 73-82% | about 56-87% | none |
+
+Idle is unchanged (about 1.5% and 0.2%). The tuned patch skips the failed GL import of the evdi buffer after the first frame, stops re-checking for a secondary renderer and logging it every frame, reuses the read-back buffer and swaps red and blue a word at a time. Run-to-run variation is large, so compare several runs.
 
 ## After kernel or Omarchy updates
 
