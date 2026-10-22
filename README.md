@@ -12,6 +12,7 @@ Live config stays on the machine (`~/.config/`, `/etc/`). This repo stores **gen
 | Chromium ad blocker (uBlock Origin Lite) | [docs/chromium-adblock.md](docs/chromium-adblock.md) | `scripts/chromium-adblock-install.sh` |
 | NVIDIA Resizable BAR (browser crashes on video) | [docs/nvidia-resizable-bar.md](docs/nvidia-resizable-bar.md) | `scripts/nvidia-resizable-bar-install.sh` |
 | Shared Cargo build cache (mr-boxington via mise) | [docs/mr-boxington.md](docs/mr-boxington.md) | `scripts/mr-boxington-install.sh` |
+| Start apps (StartBar, StartAppImage, StartFS, StartFSGUI) and Oma Cast | [docs/start-apps.md](docs/start-apps.md) | `scripts/start-apps-*.sh` |
 
 ## Quick start (Chromium ad blocker)
 
