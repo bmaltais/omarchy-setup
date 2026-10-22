@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install StartBar, StartAppImage, StartFS (daemon), StartFSGUI and Oma Cast.
+# Install StartBar, StartAppImage, StartFS (daemon), StartFSGUI and Oma Cast,
+# then use StartAppImage to install the ArtCraft Launcher.
 # Usage: start-apps-install.sh [--bind-oma-cast]
 #   --bind-oma-cast  also add Oma Cast's Hyprland keybinding (edits ~/.config/hypr)
 set -euo pipefail
@@ -51,6 +52,17 @@ fi
 if (( bind )); then
   echo "Back up ~/.config/hypr first; oma-cast edits it."
   oma-cast setup hyprland
+fi
+
+# ArtCraft Launcher through StartAppImage. The source is the launcher repo, not the main ArtCraft repo
+# (that one only ships macOS and Windows installers). Needs StartAppImage's command-line link.
+if startappimage list 2>/dev/null | awk '$1 == "artcraft-launcher" { f=1 } END { exit !f }'; then
+  echo "artcraft-launcher already installed"
+elif command -v startappimage >/dev/null 2>&1; then
+  startappimage add github:storytold/craft-launcher
+else
+  echo "Skipping ArtCraft Launcher: 'startappimage' is not on PATH." >&2
+  echo "Enable 'Command line' in the StartAppImage settings window, then rerun this script." >&2
 fi
 
 echo

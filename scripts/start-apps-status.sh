@@ -31,3 +31,8 @@ ok "startfs service:" "$(systemctl --user is-active startfs 2>/dev/null || echo 
 ok "tailscaled:" "$(systemctl is-active tailscaled 2>/dev/null || echo inactive)"
 command -v unsquashfs >/dev/null 2>&1 && ok "unsquashfs:" "present" || ok "unsquashfs:" "MISSING (StartAppImage needs squashfs-tools)"
 command -v oma-cast >/dev/null 2>&1 && ok "oma-cast cli:" "present" || ok "oma-cast cli:" "missing"
+if command -v startappimage >/dev/null 2>&1; then
+  startappimage list 2>/dev/null | awk '$1 == "artcraft-launcher" { print "  artcraft:        " $2; f=1 } END { if (!f) print "  artcraft:        missing" }'
+else
+  ok "artcraft:" "unknown (startappimage not on PATH)"
+fi

@@ -1,6 +1,6 @@
 # Playbook: Start apps and Oma Cast
 
-Install a set of Omarchy shell plugins and the StartFS daemon so a fresh machine gets a Windows-style taskbar, an AppImage manager, the StartFS cluster filesystem with its GUI, and the Oma Cast launcher.
+Install a set of Omarchy shell plugins and the StartFS daemon so a fresh machine gets a Windows-style taskbar, an AppImage manager, the StartFS cluster filesystem with its GUI, and the Oma Cast launcher, plus the ArtCraft Launcher installed through StartAppImage.
 
 | Piece | What it is | Source |
 |-------|------------|--------|
@@ -9,6 +9,7 @@ Install a set of Omarchy shell plugins and the StartFS daemon so a fresh machine
 | StartFS | Tailscale-based filesystem daemon, mounted at `~/StartFS` | `github.com/bmaltais/StartFS` (release installer) |
 | StartFSGUI | Plugin for StartFS: node list, health, upgrades | `github.com/bmaltais/StartFSGUI` |
 | Oma Cast | Command launcher plugin (third party) | `github.com/typecraft-dev/oma-cast` |
+| ArtCraft Launcher | Third-party AppImage, installed through StartAppImage | `github.com/storytold/craft-launcher` (GitHub release) |
 
 ## Assumptions
 
@@ -54,6 +55,8 @@ The script is safe to rerun: plugins already present are skipped, `startfs` is o
 
 The StartFS step pipes the project's `install.sh` from its `main` branch into `sh`. Read it first if you want to; it checks the release checksum itself. Pin a release with `STARTFS_VERSION=vX.Y.Z`, or use `STARTFS_NO_SERVICE=1` to install without starting the service.
 
+ArtCraft Launcher is installed last with `startappimage add github:storytold/craft-launcher`. The AppImage lives in the repo `craft-launcher`; the main `storytold/artcraft` repo only releases macOS and Windows installers, so `github:storytold/artcraft` does not resolve. `github:` sources are what StartAppImage's `update` follows, so the launcher updates with the rest. The step needs the `startappimage` command, which StartAppImage's **Command line** setting links into `~/.local/bin`; if it is off the script skips the launcher and says so.
+
 Oma Cast's Hyprland keybinding is opt-in because it edits `~/.config/hypr/`. Back that up, then:
 
 ```bash
@@ -84,6 +87,7 @@ Expect the four plugins `enabled`, `startfs` with a version, and `startfs servic
 
 ## After updates
 
+- `startappimage update` updates ArtCraft Launcher (and any other GitHub-sourced AppImage).
 - `omarchy plugin update` updates the git-managed plugins (StartBar, StartAppImage, StartFSGUI). Oma Cast is updated by rerunning the install script.
 - `startfs update` upgrades the daemon on every node, or use the StartFS window in StartFSGUI.
 - StartFSGUI follows StartFS 1.10 or later; an older daemon only shows basic status.
@@ -99,6 +103,7 @@ systemctl --user disable --now startfs
 rm -f ~/.local/bin/startfs ~/.config/systemd/user/startfs.service
 oma-cast uninstall
 rm -rf ~/.local/share/oma-cast
+startappimage remove artcraft-launcher
 ```
 
 Removing the packages is separate (`omarchy pkg remove`); `fuse3` and `tailscale` may be used by other things. Data in `~/StartFS` is not deleted by any of this.
