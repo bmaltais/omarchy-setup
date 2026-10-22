@@ -37,8 +37,29 @@ notify() {
 
 has_fix() { grep -aqs -- "$MARKER" "$LIB"; }
 
+# Kernel driver of the GPU Hyprland renders on: the first AQ_DRM_DEVICES entry of the running compositor.
+# Prints nothing when that cannot be read (no session, or AQ_DRM_DEVICES unset).
+primary_gpu_driver() {
+  local pid dev card
+  pid="$(pidof Hyprland | awk '{print $1}')"
+  [[ -n "$pid" && -r "/proc/$pid/environ" ]] || return 0
+  dev="$(tr '\0' '\n' <"/proc/$pid/environ" | sed -n 's/^AQ_DRM_DEVICES=//p' | cut -d: -f1)"
+  [[ -n "$dev" ]] || return 0
+  card="$(basename "$(readlink -f "$dev")")"
+  basename "$(readlink -f "/sys/class/drm/$card/device/driver")" 2>/dev/null || true
+}
+
+# The fix is only needed when the compositor renders on NVIDIA. On a hybrid laptop that renders on the
+# integrated GPU nvidia_drm is loaded too, so it is only a fallback for when the primary is unknown.
 uses_displaylink_on_nvidia() {
-  pacman -Q displaylink >/dev/null 2>&1 && [[ -d /sys/module/nvidia_drm ]]
+  pacman -Q displaylink >/dev/null 2>&1 || return 1
+  local driver
+  driver="$(primary_gpu_driver)"
+  if [[ -n "$driver" ]]; then
+    [[ "$driver" == nvidia ]]
+  else
+    [[ -d /sys/module/nvidia_drm ]]
+  fi
 }
 
 pr_state() {
