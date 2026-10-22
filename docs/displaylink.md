@@ -172,6 +172,10 @@ Success looks like:
 - Extra outputs are **not** `0x0` — they show a real mode such as `1920x1080@60`
 - `/sys/class/drm/card*-DVI-I-*/enabled` is `enabled` for connected DisplayLink connectors
 
+If an output looks healthy (real mode in `hyprctl monitors`, `enabled` in `/sys/class/drm/card*-*/enabled`, a `Modesetting … with 1920x1080@60` line in the Hyprland log) but the screen says "no signal", **check the monitor's input source and the cabling first**. A monitor that is also wired to another machine or GPU, or daisy-chained from another monitor, stays on its other input. This looks identical to a driver failure. Pressing the monitor's input button, or unplugging one cable at a time while watching `/sys/class/drm/card*-*/status`, tells you which dock port feeds which output.
+
+Docks like the Plugable UD-3900PDZ have three HDMI ports: the first is USB-C DisplayPort alt mode (needs a USB-C port that carries DisplayPort; it never works behind a USB-A link), the other two are DisplayLink and appear as `DVI-I-1` / `DVI-I-2`. Two outputs with byte-identical EDIDs usually mean two identical monitors, not a fault.
+
 If `hyprctl monitors` still only shows the internal / native panel:
 
 - Unplug/replug the hub
