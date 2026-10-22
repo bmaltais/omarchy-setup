@@ -146,7 +146,14 @@ It builds Arch's `aquamarine` package with the patch (version `<ver>-1.1`, so it
 
 Things to know:
 
-- **It does not survive an Aquamarine update.** A newer package from Arch/Omarchy replaces it and the heads go back to no signal. Rerun the script after any update that touches `aquamarine`. The script refuses to build if the patch no longer applies; then check whether #279 was merged (nothing to do) or rebase the patch.
+- **It does not survive an Aquamarine update by itself.** A newer package from Arch/Omarchy replaces it and the heads go back to no signal. Install the update hook once:
+
+  ```bash
+  ./scripts/displaylink-aquamarine-patch.sh --install-hook
+  ```
+
+  After every `omarchy update`, the hook runs `--ensure`. That does nothing unless `displaylink` is installed, NVIDIA is in use and the installed `libaquamarine` lacks the fix (`--status` prints `patched` or `stock`). If it lacks the fix, it rebuilds against the new Arch version, checks that the built package really carries the fix, installs it, and sends a notification asking you to log out. If the patch no longer applies, or the build fails, you get a notification instead, and the system package is left alone (screens stay at no signal until the patch is updated). Use `--remove-hook` to uninstall the hook. The hook file is generated per machine with this repo's path; it is not committed.
+- **When upstream merges #279**, the stock library will carry the fix and `--ensure` becomes a no-op on its own. If the merged code logs a different message than the marker the script greps for, `--ensure` will try to rebuild, find the patch no longer applies, and say upstream's state in the notification. At that point run `--remove-hook` and stop using this patch.
 - **Do not `IgnorePkg` it.** Hyprland and Aquamarine are versioned together; holding Aquamarine back breaks Hyprland updates.
 - **It costs CPU.** Every frame for the evdi screen is read back and copied. A tester measured about 16–20% of one core while content changes, on a small panel; a 1080p screen costs more. Measure it on your hardware.
 - `Cannot commit when a page-flip is awaiting` lines in the Hyprland log are common and have not caused visible problems.
