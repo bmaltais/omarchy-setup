@@ -216,6 +216,19 @@ Before running configure for real, on any machine:
 
 `Hyprland --verify-config` is not a reliable check here (it can crash even on a valid config); use `hyprctl reload` and `hyprctl configerrors` instead.
 
+## Measure the cost
+
+On NVIDIA the patched Aquamarine copies every DisplayLink frame through the CPU, so it is worth measuring before and after any change:
+
+```bash
+scripts/displaylink-benchmark.sh --seconds 30 --label "idle"
+scripts/displaylink-benchmark.sh --seconds 20 --label "moving window"   # keep content changing on the dock screens meanwhile
+```
+
+It prints Hyprland and DisplayLinkManager CPU, Hyprland log lines and KiB per second, monitor count and the USB link speed. The output contains no hostnames or monitor names, so it can be pasted into an issue.
+
+Baseline, idle desktop (3 monitors, 2 through the dock, USB 2 at 480M, RTX 3090, 12 cores): Hyprland about 2% of one core, DisplayLinkManager about 0.2%, no log output. Rendering is damage-driven, so the cost appears only when screen content changes. Worst case, a 900x600 terminal printing continuously and jumping across the screens about seven times a second: Hyprland about 99% of one core, DisplayLinkManager about 136%, and about 650 log lines (60 KiB) per second. That is the number to beat when tuning the patch.
+
 ## After kernel or Omarchy updates
 
 evdi is DKMS. A new kernel often needs a rebuild:
