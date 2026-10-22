@@ -4,7 +4,7 @@ Use a DisplayLink USB hub or dock as extra monitors on Omarchy. A DisplayLink de
 
 Prefer native GPU ports when you can. Use this playbook when the extra screens only exist on a DisplayLink hub.
 
-**Status:** works on NVIDIA with a patched Aquamarine (see [NVIDIA + evdi](#nvidia--evdi)); verified with a Plugable UD-3900PDZ on an RTX 3090, Hyprland 0.56, Aquamarine 0.15.1, evdi 1.15.1, `displaylink` 6.4. AMD and Intel are expected to work with stock Aquamarine but are untested here.
+**Status:** works on NVIDIA with a patched Aquamarine (see [NVIDIA + evdi](#nvidia--evdi)); verified with a Plugable UD-3900PDZ on an RTX 3090, Hyprland 0.56, Aquamarine 0.15.1, evdi 1.15.1, `displaylink` 6.4. AMD and Intel are expected to work with stock Aquamarine (no patch, no hook) but are untested here; see [Non-NVIDIA machines](#non-nvidia-machines).
 
 ## Assumptions
 
@@ -125,6 +125,10 @@ The configure script:
 - Installs the block from [`config/displaylink/env-hyprland.example`](../config/displaylink/env-hyprland.example). It picks the GPU **at login**: the udev symlink if present, else the first PCI card whose driver is not `evdi`. It lists `evdi0`/`evdi1` only if they exist, and leaves `AQ_DRM_DEVICES` unset if no GPU is found. A fixed list pointing at devices that are not there (hub unplugged, module not loaded) must never be what Hyprland starts with.
 - On NVIDIA also sets `AQ_FORCE_LINEAR_BLIT=0` and `AQ_MGPU_NO_EXPLICIT=1`.
 
+### Non-NVIDIA machines
+
+On AMD and Intel, stock Aquamarine can hand the primary GPU's buffers to evdi directly (per the description of hyprwm/aquamarine#279), so skip `displaylink-aquamarine-patch.sh` and its hook. Detect, install and configure are the same; the env block picks the AMD or Intel card and only sets the NVIDIA workarounds when the GPU Hyprland renders on is NVIDIA, which also holds on hybrid laptops. This path has not been run on real hardware: run `scripts/displaylink-detect.sh` first, and report what you see.
+
 ### NVIDIA + evdi
 
 On NVIDIA, stock Aquamarine cannot drive evdi outputs. Symptoms: the output is listed by `hyprctl monitors` with the mode you asked for, `/sys/class/drm/card*-DVI-I-*/enabled` stays `disabled`, the screen shows no signal, and the log has:
@@ -152,7 +156,7 @@ Things to know:
   ./scripts/displaylink-aquamarine-patch.sh --install-hook
   ```
 
-  After every `omarchy update`, the hook runs `--ensure`. That does nothing unless `displaylink` is installed, NVIDIA is in use and the installed `libaquamarine` lacks the fix (`--status` prints `patched` or `stock`). If it lacks the fix, it rebuilds against the new Arch version, checks that the built package really carries the fix, installs it, and sends a notification asking you to log out. If the patch no longer applies, or the build fails, you get a notification instead, and the system package is left alone (screens stay at no signal until the patch is updated). Use `--remove-hook` to uninstall the hook. The hook file is generated per machine with this repo's path; it is not committed.
+  After every `omarchy update`, the hook runs `--ensure`. That does nothing unless `displaylink` is installed, Hyprland renders on an NVIDIA GPU (the first `AQ_DRM_DEVICES` entry of the running compositor; a hybrid laptop that renders on the integrated GPU is skipped) and the installed `libaquamarine` lacks the fix (`--status` prints `patched` or `stock`). If it lacks the fix, it rebuilds against the new Arch version, checks that the built package really carries the fix, installs it, and sends a notification asking you to log out. If the patch no longer applies, or the build fails, you get a notification instead, and the system package is left alone (screens stay at no signal until the patch is updated). Use `--remove-hook` to uninstall the hook. The hook file is generated per machine with this repo's path; it is not committed.
 - **When upstream merges #279**, the stock library will carry the fix and `--ensure` becomes a no-op on its own. If the merged code logs a different message than the marker the script greps for, `--ensure` will try to rebuild, find the patch no longer applies, and say upstream's state in the notification. At that point run `--remove-hook` and stop using this patch.
 - **Do not `IgnorePkg` it.** Hyprland and Aquamarine are versioned together; holding Aquamarine back breaks Hyprland updates.
 - **It costs CPU.** Every frame for the evdi screen is read back and copied. A tester measured about 16–20% of one core while content changes, on a small panel; a 1080p screen costs more. Measure it on your hardware.

@@ -30,7 +30,9 @@ if [ -n "$gpu" ]; then
   [ -e /dev/dri/evdi0 ] && aq="${aq}:/dev/dri/evdi0"
   [ -e /dev/dri/evdi1 ] && aq="${aq}:/dev/dri/evdi1"
   export AQ_DRM_DEVICES="$aq"
-  if [ -e /dev/dri/nvidia-gpu ] || [ -d /sys/module/nvidia_drm ]; then
+  # NVIDIA workarounds only when NVIDIA is the GPU we render on, not merely loaded (hybrid laptops).
+  gpu_driver=$(basename "$(readlink -f "/sys/class/drm/$(basename "$(readlink -f "$gpu")")/device/driver")" 2>/dev/null)
+  if [ "$gpu_driver" = nvidia ]; then
     export AQ_FORCE_LINEAR_BLIT=0
     export AQ_MGPU_NO_EXPLICIT=1
     # AQ_NO_MODIFIERS=1 is NOT set by default: on some NVIDIA setups it greys out the native
