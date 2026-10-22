@@ -11,7 +11,7 @@ index 281f13f..25e27da 100644
          bool                                                          atomic = false;
  
 diff --git c/src/backend/drm/DRM.cpp w/src/backend/drm/DRM.cpp
-index 431247b..985ac85 100644
+index 431247b..add6fc9 100644
 --- c/src/backend/drm/DRM.cpp
 +++ w/src/backend/drm/DRM.cpp
 @@ -854,7 +854,7 @@ bool Aquamarine::CDRMBackend::initResources() {
@@ -23,7 +23,18 @@ index 431247b..985ac85 100644
  }
  
  bool Aquamarine::CDRMBackend::initMgpu() {
-@@ -1120,8 +1120,9 @@ bool Aquamarine::CDRMBackend::registerGPU(SP<CSessionDevice> gpu_, SP<CDRMBacken
+@@ -906,6 +906,10 @@ bool Aquamarine::CDRMBackend::updateSecondaryRendererState(DRMFBList* deferred)
+         if (rendererState.renderer && rendererState.allocator)
+             return true;
+ 
++        // evdi never gets a renderer (see initMgpu), so there is nothing to initialize and nothing to log per frame.
++        if (!rendererRequired)
++            return true;
++
+         backend->log(AQ_LOG_DEBUG, std::format("drm: Initializing secondary renderer on {}, has enabled outputs", gpu->path));
+         return initMgpu();
+     }
+@@ -1120,8 +1124,9 @@ bool Aquamarine::CDRMBackend::registerGPU(SP<CSessionDevice> gpu_, SP<CDRMBacken
      auto drmVerName = drmVer && drmVer->name ? drmVer->name : "unknown";
      driver          = driverFromName(drmVerName);
      if (driver == AQ_BACKEND_GPU_DRIVER_EVDI) {
@@ -35,7 +46,7 @@ index 431247b..985ac85 100644
          rendererRequired = false;
      }
  
-@@ -2698,8 +2699,65 @@ bool Aquamarine::CDRMOutput::commitState(bool onlyTest) {
+@@ -2698,8 +2703,65 @@ bool Aquamarine::CDRMOutput::commitState(bool onlyTest) {
                  data.outputState.explicitInFence = -1;
  
              drmFB = CDRMFB::create(NEWAQBUF, backend, nullptr); // will return attachment if present
@@ -103,7 +114,7 @@ index 431247b..985ac85 100644
  
          if (!drmFB) {
              backend->backend->log(AQ_LOG_ERROR, "drm: Buffer failed to import to KMS");
-@@ -2870,6 +2928,12 @@ bool Aquamarine::CDRMOutput::setCursor(SP<IBuffer> buffer, const Vector2D& hotsp
+@@ -2870,6 +2932,12 @@ bool Aquamarine::CDRMOutput::setCursor(SP<IBuffer> buffer, const Vector2D& hotsp
          SP<CDRMFB> fb;
  
          if (backend->primary) {
@@ -116,7 +127,7 @@ index 431247b..985ac85 100644
              TRACE(backend->backend->log(AQ_LOG_TRACE, "drm: Backend requires cursor blit, blitting"));
  
              if (!backend->rendererState.renderer || !backend->rendererState.allocator) {
-@@ -3051,7 +3115,10 @@ uint32_t Aquamarine::CDRMOutput::commitCapabilities() const {
+@@ -3051,7 +3119,10 @@ uint32_t Aquamarine::CDRMOutput::commitCapabilities() const {
      if (!backend || !backend->commitThread || !backend->atomic)
          return 0;
  
@@ -129,10 +140,23 @@ index 431247b..985ac85 100644
          capabilities |= AQ_OUTPUT_COMMIT_CAPABILITY_VRR;
      if (backend->drmProps.supportsAsyncCommit)
 diff --git c/src/backend/drm/Renderer.cpp w/src/backend/drm/Renderer.cpp
-index d221775..685a5a6 100644
+index d221775..5f92cec 100644
 --- c/src/backend/drm/Renderer.cpp
 +++ w/src/backend/drm/Renderer.cpp
-@@ -1002,12 +1002,9 @@ CDRMRenderer::SBlitResult CDRMRenderer::blit(SP<IBuffer> from, SP<IBuffer> to, S
+@@ -16,6 +16,12 @@ using namespace Hyprutils::Memory;
+ using namespace Hyprutils::Math;
+ using namespace Hyprutils::OS;
+ 
++namespace {
++    // Marks a destination buffer that cannot be imported into EGL (an evdi dumb buffer), so blit() skips the
++    // import attempt on later frames instead of retrying and failing every time.
++    class CCpuCopyDestMarker : public IAttachment {};
++}
++
+ #define SP CSharedPointer
+ #define WP CWeakPointer
+ 
+@@ -1002,12 +1008,9 @@ CDRMRenderer::SBlitResult CDRMRenderer::blit(SP<IBuffer> from, SP<IBuffer> to, S
      GLuint      rboID = 0, fboID = 0;
      const auto& toDma = to->dmabuf();
  
@@ -140,14 +164,14 @@ index d221775..685a5a6 100644
 -        backend->log(AQ_LOG_ERROR, "EGL (blit): failed to blit: destination dmabuf unsupported");
 -        return {};
 -    }
-+    bool        destImportable = verifyDestinationDMABUF(toDma);
++    bool        destImportable = !to->attachments.has<CCpuCopyDestMarker>() && verifyDestinationDMABUF(toDma);
  
 -    {
 +    if (destImportable) {
          auto attachment = to->attachments.get<CDRMRendererBufferOutputAttachment>();
          if (attachment && attachment->renderer == self) {
              TRACE(backend->log(AQ_LOG_TRACE, "EGL (blit): To attachment found"));
-@@ -1021,28 +1018,88 @@ CDRMRenderer::SBlitResult CDRMRenderer::blit(SP<IBuffer> from, SP<IBuffer> to, S
+@@ -1021,28 +1024,93 @@ CDRMRenderer::SBlitResult CDRMRenderer::blit(SP<IBuffer> from, SP<IBuffer> to, S
  
              rboImage = createEGLImage(toDma);
              if (rboImage == EGL_NO_IMAGE_KHR) {
@@ -197,13 +221,17 @@ index d221775..685a5a6 100644
      }
  
 +    if (!destImportable) {
++        if (!to->attachments.has<CCpuCopyDestMarker>())
++            to->attachments.add(makeShared<CCpuCopyDestMarker>());
++
 +        if (!(to->caps() & BUFFER_CAPABILITY_DATAPTR)) {
 +            backend->log(AQ_LOG_ERROR, "EGL (blit): destination cannot be imported and has no CPU mapping");
 +            return {};
 +        }
 +
-+        std::vector<uint8_t> localPixels;
-+        std::span<uint8_t>   srcPixels = intermediateBuf;
++        // Reused across frames: allocating and zeroing a full-screen buffer every frame is measurable.
++        static std::vector<uint8_t> localPixels;
++        std::span<uint8_t>          srcPixels = intermediateBuf;
 +        if (srcPixels.empty()) {
 +            localPixels.resize((size_t)fromDma.size.x * fromDma.size.y * 4);
 +            readBuffer(from, localPixels);
@@ -223,14 +251,15 @@ index d221775..685a5a6 100644
 +        switch (dstFmt) {
 +            case DRM_FORMAT_XRGB8888:
 +            case DRM_FORMAT_ARGB8888: {
++                // Swap R and B a word at a time (RGBA bytes in, BGRA bytes out); this loop vectorizes.
 +                for (int y = 0; y < H; ++y) {
 +                    const uint8_t* src = srcPixels.data() + (size_t)y * W * 4;
 +                    uint8_t*       d   = dst + (size_t)y * dstStride;
 +                    for (int x = 0; x < W; ++x) {
-+                        d[x * 4 + 0] = src[x * 4 + 2];
-+                        d[x * 4 + 1] = src[x * 4 + 1];
-+                        d[x * 4 + 2] = src[x * 4 + 0];
-+                        d[x * 4 + 3] = src[x * 4 + 3];
++                        uint32_t p;
++                        memcpy(&p, src + (size_t)x * 4, 4);
++                        p = (p & 0xFF00FF00u) | ((p & 0xFFu) << 16) | ((p >> 16) & 0xFFu);
++                        memcpy(d + (size_t)x * 4, &p, 4);
 +                    }
 +                }
 +                break;
