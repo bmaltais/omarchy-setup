@@ -11,6 +11,7 @@ Live config stays on the machine (`~/.config/`, `/etc/`). This repo stores **gen
 | DisplayLink USB hub / dock on Hyprland | [docs/displaylink.md](docs/displaylink.md) | `scripts/displaylink-detect.sh`, `displaylink-install.sh`, `displaylink-configure.sh` |
 | Chromium ad blocker (uBlock Origin Lite) | [docs/chromium-adblock.md](docs/chromium-adblock.md) | `scripts/chromium-adblock-install.sh` |
 | NVIDIA Resizable BAR (browser crashes on video) | [docs/nvidia-resizable-bar.md](docs/nvidia-resizable-bar.md) | `scripts/nvidia-resizable-bar-install.sh` |
+| Shared Cargo build cache (mr-boxington via mise) | [docs/mr-boxington.md](docs/mr-boxington.md) | `scripts/mr-boxington-install.sh` |
 
 ## Quick start (Chromium ad blocker)
 
