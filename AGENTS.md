@@ -10,7 +10,7 @@ This repo is intended to be **public**. Treat every file as if a stranger will c
 
 Use it whenever you:
 
-- Configure Omarchy beyond a one-line `omarchy` command (DisplayLink, monitors, GPU, docks, udev, systemd drop-ins, Hyprland env)
+- Configure Omarchy beyond a one-line `omarchy` command (monitors, GPU, udev, systemd drop-ins, Hyprland env; DisplayLink lives in OmaDisplayLink)
 - Need to repeat a setup on another machine
 - Are about to edit `~/.config/hypr/`, `~/.config/uwsm/`, or `/etc/` for a customization that should survive reinstalls
 
@@ -35,7 +35,7 @@ Safe to commit:
 - Placeholders (`DP-3`, `DVI-I-1`, `0000:XX:XX.X`)
 - Scripts that *detect* machine-specific values and write them to the live system
 
-Sanitize before committing command output. Prefer `scripts/displaylink-detect.sh --sanitize`.
+Sanitize before committing command output.
 
 ## How a playbook is structured
 
@@ -81,7 +81,7 @@ Do not copy the user’s current `monitors.lua` or udev rules into git unless yo
 
 | Playbook | Doc | Scripts |
 |----------|-----|---------|
-| DisplayLink USB graphics on Hyprland | [`docs/displaylink.md`](docs/displaylink.md) | `scripts/displaylink-*.sh` |
+| DisplayLink USB graphics on Hyprland | Moved to [OmaDisplayLink](https://github.com/bmaltais/OmaDisplayLink) | n/a |
 | Chromium ad blocker (uBlock Origin Lite) | [`docs/chromium-adblock.md`](docs/chromium-adblock.md) | `scripts/chromium-adblock-*.sh` |
 | NVIDIA Resizable BAR | [`docs/nvidia-resizable-bar.md`](docs/nvidia-resizable-bar.md) | `scripts/nvidia-resizable-bar-*.sh` |
 | Shared Cargo build cache (mr-boxington) | [`docs/mr-boxington.md`](docs/mr-boxington.md) | `scripts/mr-boxington-install.sh` |

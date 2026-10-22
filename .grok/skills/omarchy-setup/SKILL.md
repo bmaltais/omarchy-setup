@@ -2,9 +2,8 @@
 name: omarchy-setup
 description: >
   Apply and document reusable Omarchy customizations from this playbook repo
-  (DisplayLink/evdi, Hyprland monitors, udev, UWSM AQ_DRM_DEVICES,
-  Chromium uBlock Origin Lite).
-  Use when configuring DisplayLink, docks, extra monitors on Hyprland,
+  (Hyprland monitors, udev, UWSM AQ_DRM_DEVICES, Chromium uBlock Origin Lite).
+  Use when configuring extra monitors on Hyprland,
   Chromium ad blocking, or when the user wants a customization recorded
   for later. /omarchy-setup
 ---
@@ -16,7 +15,7 @@ This repository is the source of truth for **repeatable** Omarchy customizations
 1. Read [`AGENTS.md`](../../../AGENTS.md) before editing the repo or the live system.
 2. Follow the matching playbook instead of inventing a one-off:
 
-   - DisplayLink USB graphics: [`docs/displaylink.md`](../../../docs/displaylink.md)
+   - DisplayLink USB docks: moved to https://github.com/bmaltais/OmaDisplayLink
    - Chromium ad blocker: [`docs/chromium-adblock.md`](../../../docs/chromium-adblock.md)
 
 3. Prefer the scripts in `scripts/` over copying machine-specific `/etc` files.
